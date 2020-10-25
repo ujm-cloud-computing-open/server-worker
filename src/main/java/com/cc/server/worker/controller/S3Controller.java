@@ -30,7 +30,9 @@ import org.springframework.web.multipart.MultipartFile;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.Bucket;
 import com.amazonaws.util.json.Jackson;
+import com.cc.server.worker.model.LogginModel;
 import com.cc.server.worker.model.NumberListRequest;
+import com.cc.server.worker.services.LogginService;
 import com.cc.server.worker.services.S3BucketService;
 import com.cc.server.worker.services.SqsService;
 import com.cc.server.worker.websocket.config.Message_Handler_Singleton;
@@ -65,11 +67,46 @@ public class S3Controller {
     @Autowired
     private SqsService sqsService;
     private Message_Handler_Singleton messagePip;
+    @Autowired
+    private LogginService logginService;
     
     private static final String reciever_queue_image="sqs_image_reciever_poll";
     private static final String sender_queue_image="sqs_image_sender_poll";	
     public static final Logger LOGGER = LoggerFactory.getLogger(SqsController.class);
     
+//    PERFECTLY WORKING
+//    @CrossOrigin
+//    @SqsListener(value = sender_queue_image, deletionPolicy = SqsMessageDeletionPolicy.ON_SUCCESS)
+//	public void getMessageFromSqs( String message, 
+//			  @Header("MessageId") String messageId,
+//			  @Header("LogicalResourceId") String logicalResourceId,
+//			  @Header("ApproximateReceiveCount") String approximateReceiveCount,
+//			  @Header("ApproximateFirstReceiveTimestamp") String approximateFirstReceiveTimestamp,
+//			  @Header("SentTimestamp") String sentTimestamp,
+//			  @Header("ReceiptHandle") String receiptHandle,
+//			  @Header("Visibility") QueueMessageVisibility visibility,
+//			  @Header("SenderId") String senderId,
+//			  @Header("contentType") String contentType,
+//			  @Header("lookupDestination") String lookupDestination
+//	  ) {
+//    	System.out.println("SREVER WORKER RECIEVED THE MESSAGE>>"+message);
+//			LOGGER.info("Received image queue message= {}", message);
+//			ObjectMapper mapper = new ObjectMapper();
+//			String key="";
+//			try {
+//				 key = mapper.readValue(message, String.class);
+//			} catch (JsonMappingException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			} catch (JsonProcessingException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+//			File editedImage=s3bucketService.downloadOrignalFileFromBucket(key);
+//			String messageBody=Jackson.toJsonString(editedImage.getName());
+//			sqsService.sendMessages(reciever_queue_image, messageBody);
+//			LOGGER.info("Successfully Dispatched to queue");
+//    	}
     
     @CrossOrigin
     @SqsListener(value = sender_queue_image, deletionPolicy = SqsMessageDeletionPolicy.ON_SUCCESS)
@@ -87,6 +124,33 @@ public class S3Controller {
 	  ) {
     	System.out.println("SREVER WORKER RECIEVED THE MESSAGE>>"+message);
 			LOGGER.info("Received image queue message= {}", message);
+			LogginModel logModel=new LogginModel();
+   			logModel.messageId=messageId;
+   			logModel.message=message;
+   			logModel.logicalResourceId=logicalResourceId;
+   			logModel.approximateReceiveCount=approximateReceiveCount;
+   			logModel.approximateFirstReceiveTimestamp=approximateFirstReceiveTimestamp;
+   			logModel.sentTimestamp=sentTimestamp;
+   			logModel.receiptHandle=receiptHandle;
+   			logModel.senderId=senderId;
+   			logModel.contentType=contentType;
+   			logModel.lookupDestination=lookupDestination;
+   			try {
+				logginService.addLoggin(logModel);
+				String logText=messageId+"\n"+message+"\n"+logicalResourceId+
+						"\n"+approximateReceiveCount+"\n"+approximateFirstReceiveTimestamp
+						+"\n"+sentTimestamp+"\n"+receiptHandle
+						+"\n"+senderId+"\n"+contentType
+						+"\n"+lookupDestination;
+				logginService.addLogginString(logText);
+			} catch (JsonProcessingException e1) {
+				e1.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			
 			ObjectMapper mapper = new ObjectMapper();
 			String key="";
 			try {
@@ -98,12 +162,12 @@ public class S3Controller {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			File editedImage=s3bucketService.downloadOrignalFileFromBucket(key);
-			String messageBody=Jackson.toJsonString(editedImage.getName());
+			s3bucketService.downloadOrignalFileFromBucket(key);
+			String messageBody=Jackson.toJsonString(key);
 			sqsService.sendMessages(reciever_queue_image, messageBody);
 			LOGGER.info("Successfully Dispatched to queue");
     	}
-    
+
     @GetMapping(path = "/download")
     public ResponseEntity<ByteArrayResource> uploadFile(@RequestParam(value = "file") String file) throws IOException {
         byte[] data = s3bucketService.getFile(file);
@@ -123,15 +187,12 @@ public class S3Controller {
 			byte[] editedImage=s3bucketService.getFile("xx.jpg");
 			LOGGER.info("Successfully Dispatched to queue");
 			return editedImage.toString();
-			
-			
   	}
     
-    @GetMapping(path = "/dt2")
-    public String uploadFile() throws IOException {
-        File data = s3bucketService.downloadOrignalFileFromBucket("f.jpg");
-
-        return "ok";
-    }
+//    @GetMapping(path = "/dt2")
+//    public String uploadFile() throws IOException {
+//        File data = s3bucketService.downloadOrignalFileFromBucket("f.jpg");
+//        return "ok";
+//    }
     
 }

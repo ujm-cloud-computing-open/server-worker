@@ -2,11 +2,13 @@ package com.cc.server.worker.services;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
@@ -27,6 +29,7 @@ import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.model.Bucket;
 import com.amazonaws.services.s3.model.ListObjectsRequest;
 import com.amazonaws.services.s3.model.ObjectListing;
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
@@ -183,7 +186,7 @@ public class S3BucketService {
 	    }
 	   */
 	    
-	    public File downloadOrignalFileFromBucket(String name) {
+	    public File downloadOrignalFileFromBucketPerFect(String name) {
 	    	ClassLoader classLoader = getClass().getClassLoader();
 	    	try {
 	    		Thread.sleep(500);
@@ -204,10 +207,6 @@ public class S3BucketService {
 					e.printStackTrace();
 				}
 	    	}
-//	    	URL resource2 = classLoader.getResource(filePath+"original/"+name);
-//            if (resource2 == null) {
-//                throw new IllegalArgumentException("file not found! " + filePath);
-//            }
             try {
             File file = new File("src/main/resources/img/original/"+name);
 	        file.canWrite();
@@ -218,10 +217,6 @@ public class S3BucketService {
 	            iofs.write(originalImage);
 	            //EDITING IMAGE
 	            int result=editImage(name);
-//	            URL resource = classLoader.getResource(filePath+"edited/"+name);
-//	            if (resource == null) {
-//	                throw new IllegalArgumentException("file not found! " + filePath);
-//	            }
 	            File editedImage=new File("src/main/resources/img/edited/"+name);
 	            uploadEditedImageToBucket(editedImage);
 	            return editedImage;
@@ -238,6 +233,44 @@ public class S3BucketService {
 	        }
 	    }
 
+	    public byte[] downloadOrignalFileFromBucket(String name) {
+	    	try {
+	    		Thread.sleep(500);
+			} catch (InterruptedException e1) {
+				e1.printStackTrace();
+			}
+	    	boolean found=true;
+	    	while(found) {
+	    		List<String> objs=getObjectslistFromFolder(defaultBucketName, originalImgFolder);
+		    	for	(String f:objs) {
+		    		if(f.contains("original/"+name)){
+		    			found =false;
+		    		}
+		    	}
+		    	try {
+					Thread.sleep(200);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+	    	}
+            try {
+	        byte [] originalImage=getFile(name);
+	        InputStream is = new ByteArrayInputStream(originalImage);
+	        	byte[] result=editImageV2(is);
+	        	uploadEditedImageToBucketV2(result, name);
+	            return result;
+	        } catch (FileNotFoundException e) {
+	            e.printStackTrace();
+	            return null;
+	        } catch (IOException e) {
+	            e.printStackTrace();
+	            return null;
+	        }
+	        catch (Exception e) {
+	            e.printStackTrace();
+	            return null;
+	        }
+	    }
 	    
 	    public File dwonloadOrgFileFromBucketV2(String key) throws IOException {
 	    	byte [] originalImage=getFile(key);
@@ -253,6 +286,11 @@ public class S3BucketService {
 	    	int result=imageService.start(name);
 	    	return result;
 	    }
+	    public byte[] editImageV2(InputStream is) throws IOException {
+	    	byte[] result=imageService.startV2(is);
+	    	return result;
+	    }
+	    
 	    public byte[] convertBufferedImageToByte(BufferedImage img) {
 	    	ByteArrayOutputStream baos = new ByteArrayOutputStream();
 	    	try {
@@ -288,6 +326,16 @@ public class S3BucketService {
 	    }
 	    
 	    public void uploadEditedImageToBucket(File file){
+	  
 	    	amazonS3Client.putObject(defaultBucketName, editedImgFolder+"/"+file.getName(), file);
+	    }
+	    
+	    public void uploadEditedImageToBucketV2(byte[] content, String name){
+	    	InputStream is = new ByteArrayInputStream(content);
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentLength(content.length);
+            metadata.setContentType("image/jpg");
+            metadata.setCacheControl("public, max-age=31536000");
+	    	amazonS3Client.putObject(defaultBucketName, editedImgFolder+"/"+name, is, metadata);
 	    }
 }

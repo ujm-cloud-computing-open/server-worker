@@ -1,5 +1,6 @@
 package com.cc.server.worker.controller;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,7 +32,9 @@ import com.amazonaws.services.sqs.model.Message;
 import com.amazonaws.util.json.Jackson;
 import org.springframework.cloud.aws.autoconfigure.context.ContextStackAutoConfiguration;
 
+import com.cc.server.worker.model.LogginModel;
 import com.cc.server.worker.model.NumberListRequest;
+import com.cc.server.worker.services.LogginService;
 import com.cc.server.worker.services.SqsService;
 import com.cc.server.worker.websocket.config.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -50,6 +53,8 @@ public class SqsController {
     private QueueMessagingTemplate queueMessagingTemplate;
     @Autowired
     private SqsService sqsService;
+    @Autowired
+    private LogginService logginService;
     private Message_Handler_Singleton messagePip;
     public static final Logger LOGGER = LoggerFactory.getLogger(SqsController.class);
     @Value("${aws.endpoint.number_list_sender}")
@@ -71,6 +76,31 @@ public class SqsController {
 			  @Header("lookupDestination") String lookupDestination
 	  ) {
 			LOGGER.info("Received message= {}", message);
+			LogginModel logModel=new LogginModel();
+   			logModel.messageId=messageId;
+   			logModel.message=message;
+   			logModel.logicalResourceId=logicalResourceId;
+   			logModel.approximateReceiveCount=approximateReceiveCount;
+   			logModel.approximateFirstReceiveTimestamp=approximateFirstReceiveTimestamp;
+   			logModel.sentTimestamp=sentTimestamp;
+   			logModel.receiptHandle=receiptHandle;
+   			logModel.senderId=senderId;
+   			logModel.contentType=contentType;
+   			logModel.lookupDestination=lookupDestination;
+   			try {
+				logginService.addLoggin(logModel);
+				String logText=messageId+"\n"+message+"\n"+logicalResourceId+
+						"\n"+approximateReceiveCount+"\n"+approximateFirstReceiveTimestamp
+						+"\n"+sentTimestamp+"\n"+receiptHandle
+						+"\n"+senderId+"\n"+contentType
+						+"\n"+lookupDestination;
+				logginService.addLogginString(logText);
+			} catch (JsonProcessingException e1) {
+				e1.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			ObjectMapper mapper = new ObjectMapper();
 			NumberListRequest request=new NumberListRequest();
 			try {
