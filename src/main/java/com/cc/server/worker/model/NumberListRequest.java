@@ -9,5 +9,5 @@ public class NumberListRequest {
 
 	public int id;
 	public List<Integer> input;
-	public double output;
+	public String output;
 }

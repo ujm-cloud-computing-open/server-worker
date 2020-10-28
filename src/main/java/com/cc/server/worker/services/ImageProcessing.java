@@ -16,18 +16,8 @@ import org.springframework.stereotype.Service;
 		BufferedImage img = null; 
 		File f = null; 
 		f = new File("src/main/resources/img/original/"+key); 
-//		
-//		String fileName="img/";
-//		ClassLoader classLoader = getClass().getClassLoader();
-//        URL resource = classLoader.getResource(fileName+"original/"+key);
-//        if (resource == null) {
-//            throw new IllegalArgumentException("file not found! " + fileName);
-//        }
-        //File file = new File(resource.getFile());
-//        File file = new File(resource.toURI());
-		
+
 		img = ImageIO.read(f);
-//        img = ImageIO.read(file);
 		int width = img.getWidth(); 
 		int height = img.getHeight(); 
 		for (int y = 0; y < height; y++){ 
@@ -39,7 +29,6 @@ import org.springframework.stereotype.Service;
 				img.setRGB(x, y, p); 
 			} 
 		} 
-//		URL resource2 = classLoader.getResource(fileName+"edited/"+key);
 		f=new File("src/main/resources/img/edited/"+key);
 		ImageIO.write(img, "jpg", f); 
 		return 1;
@@ -52,20 +41,7 @@ import org.springframework.stereotype.Service;
 	public byte[] startV2(InputStream is)throws IOException {
 		try {
 			BufferedImage img = null; 
-//			File f = null; 
-//			f = new File("src/main/resources/img/original/"+key); 
-//			
-//			String fileName="img/";
-//			ClassLoader classLoader = getClass().getClassLoader();
-//	        URL resource = classLoader.getResource(fileName+"original/"+key);
-//	        if (resource == null) {
-//	            throw new IllegalArgumentException("file not found! " + fileName);
-//	        }
-	        //File file = new File(resource.getFile());
-//	        File file = new File(resource.toURI());
-			
 			img = ImageIO.read(is);
-//	        img = ImageIO.read(file);
 			int width = img.getWidth(); 
 			int height = img.getHeight(); 
 			for (int y = 0; y < height; y++){ 
@@ -77,13 +53,11 @@ import org.springframework.stereotype.Service;
 					img.setRGB(x, y, p); 
 				} 
 			} 
-//			ImageIO.write(img, "jpg", f); 
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			ImageIO.write( img, "jpg", baos );
 			baos.flush();
 			byte[] imageInByte = baos.toByteArray();
 			baos.close();
-			
 			return imageInByte;
 		} catch (Exception e) {
 			e.printStackTrace();

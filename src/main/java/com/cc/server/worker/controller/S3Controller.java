@@ -44,8 +44,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 @CrossOrigin
 public class S3Controller {
-//	@Autowired
-//	AmazonS3Client amazonS3Client;
+
 	@Autowired
 	S3BucketService s3bucketService;
 	//IMAGE BUCKET
@@ -55,13 +54,6 @@ public class S3Controller {
     String originalImgFolder;
     @Value("${aws.s3.bucket.image_list.edited.folder}")
     String editedImgFolder;
-    //LOGGING
-//    @Value("${aws.s3.bucket.log.name}")
-//    String logginBucket;
-//    
-//    @Value("${ aws.s3.bucket.log.folder.name}")
-//    String logginBucketFolder;
-   
     @Autowired
     private QueueMessagingTemplate queueMessagingTemplate;
     @Autowired
@@ -73,40 +65,6 @@ public class S3Controller {
     private static final String reciever_queue_image="sqs_image_reciever_poll";
     private static final String sender_queue_image="sqs_image_sender_poll";	
     public static final Logger LOGGER = LoggerFactory.getLogger(SqsController.class);
-    
-//    PERFECTLY WORKING
-//    @CrossOrigin
-//    @SqsListener(value = sender_queue_image, deletionPolicy = SqsMessageDeletionPolicy.ON_SUCCESS)
-//	public void getMessageFromSqs( String message, 
-//			  @Header("MessageId") String messageId,
-//			  @Header("LogicalResourceId") String logicalResourceId,
-//			  @Header("ApproximateReceiveCount") String approximateReceiveCount,
-//			  @Header("ApproximateFirstReceiveTimestamp") String approximateFirstReceiveTimestamp,
-//			  @Header("SentTimestamp") String sentTimestamp,
-//			  @Header("ReceiptHandle") String receiptHandle,
-//			  @Header("Visibility") QueueMessageVisibility visibility,
-//			  @Header("SenderId") String senderId,
-//			  @Header("contentType") String contentType,
-//			  @Header("lookupDestination") String lookupDestination
-//	  ) {
-//    	System.out.println("SREVER WORKER RECIEVED THE MESSAGE>>"+message);
-//			LOGGER.info("Received image queue message= {}", message);
-//			ObjectMapper mapper = new ObjectMapper();
-//			String key="";
-//			try {
-//				 key = mapper.readValue(message, String.class);
-//			} catch (JsonMappingException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			} catch (JsonProcessingException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-//			File editedImage=s3bucketService.downloadOrignalFileFromBucket(key);
-//			String messageBody=Jackson.toJsonString(editedImage.getName());
-//			sqsService.sendMessages(reciever_queue_image, messageBody);
-//			LOGGER.info("Successfully Dispatched to queue");
-//    	}
     
     @CrossOrigin
     @SqsListener(value = sender_queue_image, deletionPolicy = SqsMessageDeletionPolicy.ON_SUCCESS)
@@ -124,6 +82,19 @@ public class S3Controller {
 	  ) {
     	System.out.println("SREVER WORKER RECIEVED THE MESSAGE>>"+message);
 			LOGGER.info("Received image queue message= {}", message);
+			ObjectMapper mapper = new ObjectMapper();
+			String key="";
+			try {
+				 key = mapper.readValue(message, String.class);
+			} catch (JsonMappingException e) {
+				e.printStackTrace();
+			} catch (JsonProcessingException e) {
+				e.printStackTrace();
+			}
+			s3bucketService.downloadOrignalFileFromBucket(key);
+			String messageBody=Jackson.toJsonString(key);
+			sqsService.sendMessages(reciever_queue_image, messageBody);
+			LOGGER.info("Successfully Dispatched to queue");
 			LogginModel logModel=new LogginModel();
    			logModel.messageId=messageId;
    			logModel.message=message;
@@ -146,53 +117,15 @@ public class S3Controller {
 			} catch (JsonProcessingException e1) {
 				e1.printStackTrace();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			
-			
-			ObjectMapper mapper = new ObjectMapper();
-			String key="";
-			try {
-				 key = mapper.readValue(message, String.class);
-			} catch (JsonMappingException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (JsonProcessingException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			s3bucketService.downloadOrignalFileFromBucket(key);
-			String messageBody=Jackson.toJsonString(key);
-			sqsService.sendMessages(reciever_queue_image, messageBody);
-			LOGGER.info("Successfully Dispatched to queue");
-    	}
-
-    @GetMapping(path = "/download")
-    public ResponseEntity<ByteArrayResource> uploadFile(@RequestParam(value = "file") String file) throws IOException {
-        byte[] data = s3bucketService.getFile(file);
-        ByteArrayResource resource = new ByteArrayResource(data);
-
-        return ResponseEntity
-                .ok()
-                .contentLength(data.length)
-                .header("Content-type", "application/octet-stream")
-                .header("Content-disposition", "attachment; filename=\"" + file + "\"")
-                .body(resource);
     }
-    
-    @GetMapping(path = "/dt")
+
+    @GetMapping(path = "/test")
     public String testImageDownloadFromS3() {
-    		String key="xx.jpg";
-			byte[] editedImage=s3bucketService.getFile("xx.jpg");
-			LOGGER.info("Successfully Dispatched to queue");
-			return editedImage.toString();
+			return "Server_Worker Working";
   	}
     
-//    @GetMapping(path = "/dt2")
-//    public String uploadFile() throws IOException {
-//        File data = s3bucketService.downloadOrignalFileFromBucket("f.jpg");
-//        return "ok";
-//    }
+
     
 }

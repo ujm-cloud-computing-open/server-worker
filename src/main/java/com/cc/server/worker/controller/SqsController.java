@@ -110,10 +110,9 @@ public class SqsController {
 			} catch (JsonProcessingException e) {
 				e.printStackTrace();
 			}
-			final double average=sqsService.calculateMedian(request);
+			final String average=sqsService.getResults(request);
 			request.output=average;
 			String messageBody=Jackson.toJsonString(request);
-			System.out.println("messageBodyIs:>>> "+messageBody);
 			queueMessagingTemplate.convertAndSend(reciever_queue_num_list, messageBody);
 			LOGGER.info("Successfully Dispatched to queue");
     	}
